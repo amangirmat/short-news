@@ -30,6 +30,9 @@ class ShortNewsServiceProvider extends ServiceProvider
 
         $this->loadRoutes();
 
+        $this->checkForUpdates();
+
+
         // HOOK 1: Injects fields into the form builder
         add_filter(BASE_FILTER_BEFORE_RENDER_FORM, [$this, 'extendPostForm'], 120, 2);
 
@@ -53,6 +56,14 @@ class ShortNewsServiceProvider extends ServiceProvider
                 return $boxes;
             }, 120, 2);
         }
+
+        add_filter('core_plugin_updates', function ($updates) {
+    if (cache()->has('short-news_update')) {
+        $updates['short-news'] = cache()->get('short-news_update');
+    }
+    return $updates;
+});
+
 
         // Shortcode registration
         add_shortcode('short-news-stories', 'Short News Stories', 'Display stories', function () {
@@ -87,19 +98,7 @@ class ShortNewsServiceProvider extends ServiceProvider
             ]);
         });
 
-        // --- UPDATE CHECKER SYSTEM ---
-        // We check for the constant to prevent errors if the base system isn't fully loaded
-        if (defined('BASE_FILTER_CHECK_UPDATE_URL')) {
-            if ($this->app->runningInConsole() || request()->is(config('core.base.general.admin_dir', 'admin') . '*')) {
-                $this->app->booted(function () {
-                    add_filter(BASE_FILTER_CHECK_UPDATE_URL, function ($urls) {
-                        // Ensure this key 'short-news' matches your actual folder name in platform/plugins
-                        $urls['short-news'] = 'https://raw.githubusercontent.com/amangirmat/short-news/refs/heads/main/update.json';
-                        return $urls;
-                    }, 120);
-                });
-            }
-        }
+     
     }
 
     
@@ -138,6 +137,30 @@ class ShortNewsServiceProvider extends ServiceProvider
             }
         }
     }
+
+    protected function checkForUpdates()
+    {
+        $response = Http::get(
+            'https://api.github.com/repos/amangirmat/short-news/releases/latest'
+        );
+
+        if ($response->failed()) {
+            return;
+        }
+
+        $release = $response->json();
+        $latestVersion = ltrim($release['tag_name'], 'v');
+
+        $pluginVersion = '1.0.0';
+
+        if (version_compare($pluginVersion, $latestVersion, '<')) {
+            cache()->put('short-news_update', [
+                'version' => $latestVersion,
+                'url' => $release['assets'][0]['browser_download_url'],
+            ], now()->addHours(6));
+        }
+    }
+
 
     
 }
