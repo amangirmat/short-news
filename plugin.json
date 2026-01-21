@@ -4,6 +4,6 @@
     "namespace": "Botble\\ShortNews\\",
     "provider": "Botble\\ShortNews\\Providers\\ShortNewsServiceProvider",
     "author": "DNE",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "TikTok-style vertical scrolling news stories with manual main points."    
 }
