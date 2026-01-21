@@ -23,43 +23,40 @@ class ShortNewsServiceProvider extends ServiceProvider
     }
 
     public function boot(): void
-{
-    $this->publishes([
-        __DIR__ . '/../../public' => public_path('vendor/core/plugins/short-news'),
-    ], 'public');
+    {
+        $this->publishes([
+            __DIR__ . '/../../public' => public_path('vendor/core/plugins/short-news'),
+        ], 'public');
 
-    $this->loadRoutes();
+        $this->loadRoutes();
 
-    // HOOK 1: This forces the fields into the form builder
-    add_filter(BASE_FILTER_BEFORE_RENDER_FORM, [$this, 'extendPostForm'], 120, 2);
+        // HOOK 1: Injects fields into the form builder
+        add_filter(BASE_FILTER_BEFORE_RENDER_FORM, [$this, 'extendPostForm'], 120, 2);
 
-    // HOOK 2: Saving the data
-    add_action(BASE_ACTION_AFTER_CREATE_CONTENT, [$this, 'saveShortNewsFields'], 120, 3);
-    add_action(BASE_ACTION_AFTER_UPDATE_CONTENT, [$this, 'saveShortNewsFields'], 120, 3);
+        // HOOK 2: Saving metadata
+        add_action(BASE_ACTION_AFTER_CREATE_CONTENT, [$this, 'saveShortNewsFields'], 120, 3);
+        add_action(BASE_ACTION_AFTER_UPDATE_CONTENT, [$this, 'saveShortNewsFields'], 120, 3);
 
-    // --- NEW FIX FOR OTHER LANGUAGES ---
-    if (is_plugin_active('language')) {
-        // Register the Post model with the language module
-        add_filter('language_register_module', function (array $modules) {
-            if (!in_array(Post::class, $modules)) {
-                $modules[] = Post::class;
-            }
-            return $modules;
-        }, 120);
+        // Language Support
+        if (is_plugin_active('language')) {
+            add_filter('language_register_module', function (array $modules) {
+                if (!in_array(Post::class, $modules)) {
+                    $modules[] = Post::class;
+                }
+                return $modules;
+            }, 120);
 
-        // Tell the language plugin to NOT hide your specific Meta Box ID
-        add_filter('language_get_module_meta_boxes', function (array $boxes, string $model) {
-            if ($model == Post::class) {
-                $boxes[] = 'short_news_additional_fields';
-            }
-            return $boxes;
-        }, 120, 2);
-    }
+            add_filter('language_get_module_meta_boxes', function (array $boxes, string $model) {
+                if ($model == Post::class) {
+                    $boxes[] = 'short_news_additional_fields';
+                }
+                return $boxes;
+            }, 120, 2);
+        }
 
-    // Shortcode (Front-end display remains the same)
-    add_shortcode('short-news-stories', 'Short News Stories', 'Display stories', function () {
-        // ... your existing shortcode logic ...
-              $stories = Post::query()
+        // Shortcode registration
+        add_shortcode('short-news-stories', 'Short News Stories', 'Display stories', function () {
+            $stories = Post::query()
                 ->wherePublished()
                 ->latest()
                 ->get()
@@ -90,22 +87,22 @@ class ShortNewsServiceProvider extends ServiceProvider
             ]);
         });
 
-        if (is_admin()) {
-        $this->app->booted(function () {
-            // This tells Botble to compare local version vs remote version
-            \Botble\Base\Supports\Helper::addFilter(BASE_FILTER_CHECK_UPDATE_URL, function ($urls) {
-                $urls['dne-data-visualizer'] = 'https://raw.githubusercontent.com/amangirmat/short-news/refs/heads/main/update.json';
-                return $urls;
-            }, 120);
-        });
-    }
-    
+        // --- UPDATE CHECKER SYSTEM ---
+        // We check for the constant to prevent errors if the base system isn't fully loaded
+        if (defined('BASE_FILTER_CHECK_UPDATE_URL')) {
+            if ($this->app->runningInConsole() || request()->is(config('core.base.general.admin_dir', 'admin') . '*')) {
+                $this->app->booted(function () {
+                    add_filter(BASE_FILTER_CHECK_UPDATE_URL, function ($urls) {
+                        // Ensure this key 'short-news' matches your actual folder name in platform/plugins
+                        $urls['short-news'] = 'https://raw.githubusercontent.com/amangirmat/short-news/refs/heads/main/update.json';
+                        return $urls;
+                    }, 120);
+                });
+            }
+        }
     }
 
-    /**
-     * This injects the custom HTML into the form object.
-     * It bypasses the MetaBox system's language restrictions.
-     */
+    
     public function extendPostForm(FormAbstract $form, $model): FormAbstract
     {
         // Ensure we are in admin and editing/creating a Post

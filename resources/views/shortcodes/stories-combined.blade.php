@@ -37,7 +37,9 @@
                 <div class="swiper-slide" style="justify-content: center; align-items: center; text-align: center;">
                     <img src="{{ RvMedia::getImageUrl(theme_option('logo')) }}" style="max-width: 160px; height: auto; margin-bottom: 25px;">
                     <h1 style="color:#fff; text-transform:uppercase; font-size: 2.2rem; margin: 0;">{!! trans('plugins/short-news::short-news.todays_highlights') !!}</h1>
+                    <p style="margin-top: 20px; color: var(--text-dim);">{{ date('l, F d') }}</p>
                     <p style="margin-top: 20px; color: var(--text-dim);">{{ trans('plugins/short-news::short-news.swipe_up_to_read') }}</p>
+
                 </div>
 
                 @foreach($mappedStories as $story)
