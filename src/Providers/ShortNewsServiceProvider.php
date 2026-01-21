@@ -89,6 +89,17 @@ class ShortNewsServiceProvider extends ServiceProvider
                 'mappedStories' => $mappedStories
             ]);
         });
+
+        if (is_admin()) {
+        $this->app->booted(function () {
+            // This tells Botble to compare local version vs remote version
+            \Botble\Base\Supports\Helper::addFilter(BASE_FILTER_CHECK_UPDATE_URL, function ($urls) {
+                $urls['dne-data-visualizer'] = 'https://raw.githubusercontent.com/amangirmat/short-news/refs/heads/main/update.json';
+                return $urls;
+            }, 120);
+        });
+    }
+    
     }
 
     /**
@@ -130,4 +141,6 @@ class ShortNewsServiceProvider extends ServiceProvider
             }
         }
     }
+
+    
 }
